@@ -2,6 +2,7 @@ package web.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
@@ -11,62 +12,53 @@ import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.apache.commons.dbcp2.BasicDataSource;
 
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import java.util.Properties;
 
 @Configuration
 @EnableTransactionManagement
-@PropertySource("classpath:resources/application.properties")
+@ComponentScan(basePackages = "web.DAO")
 public class DBConfig {
-
-    @Autowired
-    private Environment env;
-
     @Bean
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
-        LocalContainerEntityManagerFactoryBean em
-                = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(dataSource());
-        em.setPackagesToScan(new String[] { "com.model" });
-
-        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        em.setJpaVendorAdapter(vendorAdapter);
-        em.setJpaProperties(additionalProperties());
-
-        return em;
-    }
-
-    @Bean
-    public DataSource dataSource(){
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName(env.getProperty("spring.datasource.driver-class-name"));
-        dataSource.setUrl(env.getProperty("spring.datasource.url"));
-        dataSource.setUsername(env.getProperty("spring.datasource.username"));
-        dataSource.setPassword(env.getProperty("spring.datasource.password"));
+    public DataSource dataSource() {
+        BasicDataSource dataSource = new BasicDataSource();
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        dataSource.setUrl("jdbc:mysql://localhost:3306/db");
+        dataSource.setUsername("root");
+        dataSource.setPassword("root");
         return dataSource;
     }
 
     @Bean
-    public PlatformTransactionManager transactionManager(){
-        JpaTransactionManager transactionManager
-                = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(
-                entityManagerFactory().getObject());
-        return transactionManager;
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
+        emf.setDataSource(dataSource());
+        emf.setPackagesToScan("web.model");
+        emf.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        Properties jpaProperties = new Properties();
+        jpaProperties.put("hibernate.hbm2ddl.auto", "update");
+        jpaProperties.put("hibernate.show_sql", "true");
+        jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.MySQL57InnoDBDialect");
+        emf.setJpaProperties(jpaProperties);
+        return emf;
     }
 
     @Bean
-    public PersistenceExceptionTranslationPostProcessor exceptionTranslation(){
-        return new PersistenceExceptionTranslationPostProcessor();
+    public EntityManager entityManager(EntityManagerFactory entityManagerFactory) {
+        return entityManagerFactory.createEntityManager();
     }
 
-    Properties additionalProperties() {
-        Properties properties = new Properties();
-        properties.setProperty("hibernate.hbm2ddl.auto", env.getProperty("spring.jpa.hibernate.ddl-auto"));
-        properties.setProperty("hibernate.dialect", env.getProperty("spring.jpa.properties.hibernate.dialect"));
-        properties.setProperty("hibernate.show_sql", env.getProperty("spring.jpa.show-sql"));
-        return properties;
+
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        JpaTransactionManager transactionManager = new JpaTransactionManager();
+        transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+        return transactionManager;
     }
+
 }
