@@ -5,40 +5,47 @@ import org.springframework.stereotype.Service;
 import web.model.User;
 
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Service;
+import web.repository.UserRepository;
+
 import java.util.List;
 
 @Service
 public class UserDaoImpl  implements UserDAO{
 
-    @PersistenceContext
-   private EntityManager entityManager;
+
+     final private UserRepository userRepository;
+
+     @Autowired
+    public UserDaoImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Override
     @Transactional
     public List<User> getAllUsers() {
-        List <User> users = entityManager.createQuery("from User", User.class).getResultList();
-        return users;
+
+        return userRepository.findAll();
     }
 
     @Transactional
     @Override
     public void addUser(User user) {
-        entityManager.merge(user);
+       userRepository.save(user);
     }
 
     @Override
     @Transactional
     public User getUser(int i) {
-        return entityManager.find(User.class, i);
+        return userRepository.getOne(i);
     }
 
     @Override
     @Transactional
     public void deleteUser(int id) {
-        User user = entityManager.find(User.class, id);
-        entityManager.remove(user);
+        userRepository.deleteById(id);
     }
 }
